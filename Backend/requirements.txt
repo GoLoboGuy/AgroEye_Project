@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-multipart
+opencv-python
+pillow
+numpy
+torch
+torchvision
+sqlalchemy
+pymysql
+alembic
+httpx
+python-dotenv
