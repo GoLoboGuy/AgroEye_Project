@@ -1,10 +1,11 @@
 # backend/config.py
 from typing import List
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseModel):
+class Settings(BaseSettings):
     """애플리케이션 설정"""
     
     # 기본 설정
@@ -58,6 +59,12 @@ class Settings(BaseModel):
     API_PREFIX: str = Field(default="/api/v1")
     DEFAULT_PAGE_SIZE: int = Field(default=100)
     MAX_PAGE_SIZE: int = Field(default=1000)
+    
+    # 환경 변수 파일(.env) 로드 설정 (Pydantic v2)
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
 # 전역 설정 인스턴스
 settings = Settings()

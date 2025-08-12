@@ -35,26 +35,19 @@ def save_results_batch(db: Session, results: List[dict]) -> List[ImageAnalysis]:
     여러 분석 결과를 배치로 저장합니다.
     """
     try:
-        objects = []
-        for result in results:
-            obj = ImageAnalysis(
-                class_name=result["class_name"],
-                confidence=result["confidence"],
-                x1=result["x1"], y1=result["y1"],
-                x2=result["x2"], y2=result["y2"],
-                image_path=result["image_path"]
-            )
-            objects.append(obj)
-        
-        db.add_all(objects)
+        # bulk_insert_mappings 사용으로 대량 삽입 최적화
+        db.bulk_insert_mappings(ImageAnalysis, results)
         db.commit()
-        
-        # 저장된 객체들을 새로고침
-        for obj in objects:
-            db.refresh(obj)
-        
-        logger.info(f"배치 저장 완료: {len(objects)}개 결과")
-        return objects
+        # 삽입된 레코드 조회
+        inserted = (
+            db.query(ImageAnalysis)
+            .filter(ImageAnalysis.image_path == results[0]["image_path"])
+            .order_by(ImageAnalysis.created_at.desc())
+            .limit(len(results))
+            .all()
+        )
+        logger.info(f"배치 저장 완료: {len(inserted)}개 결과")
+        return inserted
     except Exception as e:
         logger.error(f"배치 저장 실패: {str(e)}")
         db.rollback()

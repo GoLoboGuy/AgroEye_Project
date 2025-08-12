@@ -26,11 +26,12 @@ DATABASE_URL = os.getenv("DATABASE_URL", settings.DATABASE_URL)
 # 엔진 설정 최적화
 engine = create_engine(
     DATABASE_URL,
-    echo=False,  # 프로덕션에서는 False
+    echo=settings.DEBUG,
     future=True,
     poolclass=QueuePool,
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_timeout=30,           # 대기 시간 (초)
     pool_pre_ping=True,  # 연결 상태 확인
     pool_recycle=settings.DB_POOL_RECYCLE,
 )
