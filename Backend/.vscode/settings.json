@@ -1,0 +1,15 @@
+{
+    "terminal.integrated.defaultProfile.windows": "Command Prompt",
+    "terminal.integrated.profiles.windows": {
+        "Command Prompt": {
+            "path": "cmd.exe",
+            "args": []
+        }
+    },
+    "terminal.integrated.env.windows": {
+        "TESTING": "1"
+    },
+    "python.defaultInterpreterPath": "C:\\Users\\tcguy\\anaconda3\\envs\\FinalProject\\python.exe",
+    "python.terminal.activateEnvironment": true
+}
+
