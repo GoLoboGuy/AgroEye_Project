@@ -1,0 +1,16 @@
+name: agroeye
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    - fastapi
+    - uvicorn[standard]
+    - sqlalchemy
+    - mysql-connector-python
+    - opencv-python
+    - ultralytics
+    - alembic
+    - python-dotenv

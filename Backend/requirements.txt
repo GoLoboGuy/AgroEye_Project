@@ -1,13 +1,8 @@
 fastapi
-uvicorn
-python-multipart
-opencv-python
-pillow
-numpy
-torch
-torchvision
+uvicorn[standard]
 sqlalchemy
-pymysql
+mysql-connector-python
+opencv-python
+ultralytics
 alembic
-httpx
 python-dotenv
