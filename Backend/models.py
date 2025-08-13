@@ -1,21 +1,19 @@
 # backend/models.py
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import (
-    Column, Integer, String, Float, DateTime, func
+    Column, Integer, String, Text, DateTime, func
 )
 
 Base = declarative_base()
 
-class ImageAnalysis(Base):
-    __tablename__ = "image_analysis"
+class finalprojectresults(Base):
+    __tablename__ = "final_project_results"
 
-    id          = Column(Integer, primary_key=True, index=True)
-    class_name  = Column(String(50), nullable=False, index=True)
-    confidence  = Column(Float, nullable=False)
-    x1          = Column(Float, nullable=False)
-    y1          = Column(Float, nullable=False)
-    x2          = Column(Float, nullable=False)
-    y2          = Column(Float, nullable=False)
-    image_path  = Column(String(200), nullable=False)
+    id          = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    class_name  = Column(String(255), nullable=False, index=True)
+    class_info  = Column(Text, nullable=True)
+    recomm      = Column(Text, nullable=True)
+    image_path  = Column(String(500), nullable=False)
     created_at  = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at  = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

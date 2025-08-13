@@ -1,4 +1,4 @@
-# backend/leaf_ensemble.py
+# model/leaf_ensemble.py
 from pathlib import Path
 import json
 import numpy as np
@@ -9,6 +9,7 @@ import torch.nn as nn
 from torchvision import models, transforms
 from PIL import Image
 
+# 현재 파일이 있는 model 폴더 내의 weights 디렉토리 참조
 WEIGHTS_DIR = Path(__file__).parent / "weights"
 MN_PATH = WEIGHTS_DIR / "mobilenet_v2" / "best.pth"
 RN_PATH = WEIGHTS_DIR / "resnet50" / "best.pth"

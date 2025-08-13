@@ -23,6 +23,8 @@ load_dotenv()
 # 데이터베이스 URL 설정 (기본값: SQLite)
 DATABASE_URL = os.getenv("DATABASE_URL", settings.DATABASE_URL)
 
+logger.info(f"데이터베이스 URL: {DATABASE_URL}")
+
 # 엔진 설정 최적화
 engine = create_engine(
     DATABASE_URL,
@@ -59,10 +61,58 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
 def init_db():
     """데이터베이스 초기화"""
     try:
+        logger.info("데이터베이스 초기화 시작...")
+        
+        # 테이블이 존재하지 않으면 자동 생성
         Base.metadata.create_all(bind=engine)
-        logger.info("데이터베이스 테이블이 성공적으로 생성되었습니다.")
+        logger.info("SQLAlchemy 테이블 생성 완료")
+        
+        # MySQL의 경우 테이블 존재 여부 확인
+        if "mysql" in DATABASE_URL.lower():
+            logger.info("MySQL 데이터베이스 감지, 테이블 확인 중...")
+            with engine.connect() as connection:
+                # final_project_results 테이블 존재 여부 확인
+                result = connection.execute(text("""
+                    SELECT COUNT(*) 
+                    FROM information_schema.tables 
+                    WHERE table_schema = DATABASE() 
+                    AND table_name = 'final_project_results'
+                """))
+                table_exists = result.scalar() > 0
+                
+                if not table_exists:
+                    logger.info("final_project_results 테이블이 존재하지 않습니다. 생성 중...")
+                    # 테이블이 없으면 생성
+                    connection.execute(text("""
+                        CREATE TABLE IF NOT EXISTS final_project_results (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            class_name VARCHAR(255) NOT NULL,
+                            class_info TEXT NULL,
+                            recomm TEXT NULL,
+                            image_path VARCHAR(500) NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                            INDEX idx_class_name (class_name),
+                            INDEX idx_created_at (created_at)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    """))
+                    connection.commit()
+                    logger.info("final_project_results 테이블이 성공적으로 생성되었습니다.")
+                else:
+                    logger.info("final_project_results 테이블이 이미 존재합니다.")
+                    
+        elif "sqlite" in DATABASE_URL.lower():
+            logger.info("SQLite 데이터베이스 감지")
+        else:
+            logger.info(f"데이터베이스 타입: {DATABASE_URL}")
+            
+        logger.info("데이터베이스 초기화가 성공적으로 완료되었습니다.")
+        
     except Exception as e:
         logger.error(f"데이터베이스 초기화 중 오류 발생: {str(e)}")
+        logger.error(f"오류 타입: {type(e).__name__}")
+        import traceback
+        logger.error(f"상세 오류: {traceback.format_exc()}")
         raise
 
 def get_db():

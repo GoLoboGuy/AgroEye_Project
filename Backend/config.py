@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     """애플리케이션 설정"""
     
     # 기본 설정
-    APP_NAME: str = "Image Analysis API"
+    APP_NAME: str = "Leaf Disease Detection API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = Field(default=False)
     
@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     DB_MAX_OVERFLOW: int = Field(default=20)
     DB_POOL_RECYCLE: int = Field(default=3600)
     
-    # 이미지 저장 설정
+    # 이미지 저장 설정 (Backend 폴더 내의 images 폴더)
     IMAGES_DIR: str = Field(default="images")
     IMAGE_CLEANUP_DAYS: int = Field(default=30)
     
