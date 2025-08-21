@@ -47,7 +47,7 @@
       <div v-if="diseaseInfo" class="disease-details">
         <div class="disease-header">
           <h3>병충해 정보</h3>
-          <div class="severity-badge" :class="getSeverityClass(diseaseInfo.severity)">
+          <div class="severity-badge" :class="diseaseInfo.severity">
             {{ getSeverityText(diseaseInfo.severity) }}
           </div>
         </div>
@@ -119,7 +119,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { getDiseaseInfo } from '../services/api'
-import type { ModelPrediction, DiseaseInfo } from '../services/api'
+import type { ModelPrediction } from '../services/api'
 
 interface Props {
   result: ModelPrediction | null
@@ -127,14 +127,12 @@ interface Props {
   error: string | null
 }
 
-interface Emits {
-  (e: 'retry'): void
-  (e: 'new-analysis'): void
-  (e: 'save-result'): void
-}
-
 const props = defineProps<Props>()
-const emit = defineEmits<Emits>()
+defineEmits<{
+  retry: []
+  'new-analysis': []
+  'save-result': []
+}>()
 
 // 병충해 정보 계산
 const diseaseInfo = computed(() => {
@@ -155,10 +153,7 @@ const getConfidenceClass = (confidence: number): string => {
   return 'low'
 }
 
-// 심각도에 따른 클래스 반환
-const getSeverityClass = (severity: string): string => {
-  return severity
-}
+
 
 // 심각도 텍스트 반환
 const getSeverityText = (severity: string): string => {
@@ -201,9 +196,10 @@ const getSeverityText = (severity: string): string => {
 .error-container {
   text-align: center;
   padding: 40px 20px;
-  background-color: #fef2f2;
-  border: 1px solid #fecaca;
+  background-color: rgba(254, 242, 242, 0.98);
+  border: 1px solid rgba(254, 202, 202, 0.8);
   border-radius: 8px;
+  backdrop-filter: blur(5px);
 }
 
 .error-icon {
@@ -212,13 +208,12 @@ const getSeverityText = (severity: string): string => {
 }
 
 .retry-btn {
-  background-color: #dc2626;
+  background-color: var(--color-danger);
   color: white;
   border: none;
   padding: 12px 24px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 16px;
   margin-top: 16px;
 }
 
@@ -227,10 +222,11 @@ const getSeverityText = (severity: string): string => {
 }
 
 .result-container {
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.98);
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  backdrop-filter: blur(5px);
 }
 
 .result-summary {
@@ -287,7 +283,6 @@ const getSeverityText = (severity: string): string => {
 
 .model-used {
   color: #6b7280;
-  font-size: 14px;
   margin: 0;
 }
 
@@ -417,15 +412,15 @@ const getSeverityText = (severity: string): string => {
 .healthy-status p {
   margin: 0 0 24px 0;
   color: #6b7280;
-  font-size: 16px;
 }
 
 .health-tips {
   text-align: left;
-  background-color: #f0fdf4;
+  background-color: rgba(240, 253, 244, 0.98);
   padding: 20px;
   border-radius: 8px;
-  border: 1px solid #bbf7d0;
+  border: 1px solid rgba(187, 247, 208, 0.8);
+  backdrop-filter: blur(5px);
 }
 
 .health-tips h4 {
@@ -457,13 +452,12 @@ const getSeverityText = (severity: string): string => {
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 16px;
   font-weight: 500;
   transition: background-color 0.2s;
 }
 
 .new-analysis-btn {
-  background-color: #3b82f6;
+  background-color: var(--color-primary);
   color: white;
 }
 
@@ -472,7 +466,7 @@ const getSeverityText = (severity: string): string => {
 }
 
 .save-result-btn {
-  background-color: #10b981;
+  background-color: var(--color-success);
   color: white;
 }
 
@@ -511,3 +505,4 @@ const getSeverityText = (severity: string): string => {
   }
 }
 </style>
+
