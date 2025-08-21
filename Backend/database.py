@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(dotenv_path=BASE_DIR / ".env", override=True)
 
-from config import settings  # load_dotenv 이후에 import
+from .config import settings  # load_dotenv 이후에 import
 
 engine = create_engine(
     settings.DATABASE_URL,

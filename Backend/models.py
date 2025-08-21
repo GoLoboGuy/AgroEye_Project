@@ -1,6 +1,6 @@
 # Backend/models.py
 from sqlalchemy import Column, Integer, String, Text, DateTime, Index, text
-from database import Base
+from .database import Base
 
 class FinalProjectResult(Base):
     __tablename__ = "final_project_results"

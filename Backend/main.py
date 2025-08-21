@@ -11,7 +11,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 import structlog
 
-from config import settings
+from .config import settings
 
 APP_NAME = getattr(settings, "APP_NAME", "Leaf-Disease-Detection-API")
 APP_VERSION = getattr(settings, "APP_VERSION", "1.0.0")
@@ -32,14 +32,14 @@ RAG_INDEX_DIR = getattr(settings, "RAG_INDEX_DIR", "Backend/rag/indexes/faiss")
 # 선택: classifier 로드 지원
 classifier = None
 try:
-    from services.classifier import Classifier
+    from .services.classifier import Classifier
     classifier = Classifier()
 except Exception as e:
     print(f"⚠️ classifier 준비 실패: {e} (스텁 모드)")
 
 # DB 헬스체크
 try:
-    from database import test_db_connection
+    from .database import test_db_connection
 except Exception as e:
     print(f"⚠️ database import 경고: {e}")
 
@@ -115,8 +115,8 @@ async def add_process_time_header(request: Request, call_next):
 
 # 🔗 API 라우터 연결 (안전 가드 포함)
 try:
-    from api import router as api_router
-    app.include_router(api_router, prefix=API_PREFIX)
+    from . import api
+    app.include_router(api.router, prefix=API_PREFIX)
     logger.info("API 라우터 등록 성공", prefix=API_PREFIX)
 except Exception as exc:
     logger.error("API 라우터 등록 실패", error=str(exc))
@@ -130,7 +130,7 @@ except Exception as exc:
 
 # HealthCheck 모델 보완
 try:
-    from schemas import HealthCheck
+    from .schemas import HealthCheck
 except Exception:
     from pydantic import BaseModel
 

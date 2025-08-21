@@ -7,22 +7,52 @@ from typing import List, Any, Dict, Optional
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Path as FPath
 
-from config import settings
-from database import SessionLocal
-from models import FinalProjectResult
-from schemas import (
+from .config import settings
+from .database import SessionLocal
+from .models import FinalProjectResult
+from .schemas import (
     PredictResponse,
     ResultsPage,
     ResultItem,
     ResultDetail,
     DeleteResult,
 )
-from services.classifier import classifier
-from services.synonyms import class_to_query_terms, as_boolean_query
-from services.rag_service import rag, Retrieved
+from .services.classifier import classifier
+from .services.synonyms import class_to_query_terms, as_boolean_query
+from .services.rag_service import rag, Retrieved
+
+from .schemas import PredictResponse, SourceItem  # ← SourceItem 추가
 
 # router = APIRouter(tags=["predict"])  # ← FastAPI 대신 APIRouter
 router = APIRouter() # 기본 tags 제거
+
+# RAG 결과 → SourceItem dict 변환 헬퍼 추가
+def _to_source_item(hit) -> dict:
+    """
+    hit: Retrieved 객체 (rag.search()에서 반환)
+    반환: SourceItem에 맞는 dict
+    """
+    # Retrieved 객체의 구조: text, meta, score
+    meta = getattr(hit, "meta", {}) or {}
+    score = getattr(hit, "score", None)
+    
+    src = str(meta.get("source", "")).replace("\\", "/")  # 경로 통일
+    page = meta.get("page", None)
+    try:
+        page = int(page) if page is not None else None
+    except Exception:
+        page = None
+
+    snippet = (getattr(hit, "text", "") or "")[:300]
+    title = meta.get("title", None)
+
+    return {
+        "source": src,
+        "page": page,
+        "score": score,
+        "snippet": snippet,
+        "title": title,
+    }
 
 # -----------------------------
 # 1) 예측
@@ -51,13 +81,17 @@ async def predict(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail="RAG 서비스가 초기화되지 않았습니다. 인덱스를 먼저 생성하세요.")
     retrieved: List[Retrieved] = rag.search(boolean_query, k=4)
     explanation = rag.generate_explanation(boolean_query, retrieved)
-    sources = rag.make_sources(retrieved)
 
-    # 5) DB 저장
+    # dict 리스트 (SourceItem 스키마에 맞춤)
+    sources_dicts = [_to_source_item(h) for h in retrieved[:4]]
+    # Pydantic 모델로 감싸도 되고(dict 그대로도 OK)
+    sources_items = [SourceItem(**d) for d in sources_dicts]
+
+    # 5) DB 저장 (JSON 직렬화에는 dict가 적합)
     class_info_obj = {
         "query_terms": terms,
         "boolean_query": boolean_query,
-        "sources": sources,
+        "sources": sources_dicts,                   # ← dict 사용 (모델 말고)
         "detailed_prediction": detailed_result,
     }
     class_info = json.dumps(class_info_obj, ensure_ascii=False)
@@ -86,7 +120,7 @@ async def predict(file: UploadFile = File(...)):
         confidence=confidence,
         recomm=explanation,
         image_path=str(save_path),
-        sources=sources,
+        sources=sources_items,
         detailed_prediction=detailed_result,
     )
 

@@ -8,7 +8,7 @@ from typing import List, Dict
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 
-from Backend.config import settings
+from ..config import settings
 
 try:
     from openai import OpenAI  # optional
@@ -67,7 +67,7 @@ class RagService:
 
     def generate_explanation(self, query: str, items: List[Retrieved]) -> str:
         """OPENAI_API_KEY 있으면 LLM, 없으면 간이 요약.
-        반환 문자열 끝에 \n\n출처: - file#pN ... 형태 첨부.
+        소스 정보는 별도 sources 필드로 전달됩니다.
         """
         sources = self.make_sources(items)
         context = "\n\n".join([r.text for r in items])[:6000]
@@ -101,8 +101,7 @@ class RagService:
                 f"{head}"
             )
 
-        if sources:
-            body += "\n\n출처:\n" + "\n".join([f"- {s}" for s in sources])
+        # 소스 정보는 별도 sources 필드로 전달하므로 recomm에는 포함하지 않음
         return body
 
 rag = RagService()
