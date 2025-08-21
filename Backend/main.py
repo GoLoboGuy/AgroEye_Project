@@ -1,95 +1,173 @@
-# backend/main.py
-import logging
+# Backend/main.py
+from __future__ import annotations
+
 import os
-import sys
+import time
 from contextlib import asynccontextmanager
-from pathlib import Path
 
-# model 모듈 경로 추가 (상위 디렉토리의 model 폴더)
-project_root = Path(__file__).parent.parent
-model_path = project_root / "model"
-sys.path.append(str(model_path))
-
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
+import structlog
 
-from config import get_settings
-from database import init_db, test_db_connection
-from schemas import HealthCheck
+from config import settings
 
-# 설정 로드
-settings = get_settings()
+APP_NAME = getattr(settings, "APP_NAME", "Leaf-Disease-Detection-API")
+APP_VERSION = getattr(settings, "APP_VERSION", "1.0.0")
+DEBUG = bool(getattr(settings, "DEBUG", True))
+API_PREFIX = getattr(settings, "API_PREFIX", "/api")
+if not API_PREFIX.startswith("/"):
+    API_PREFIX = f"/{API_PREFIX}"
 
-# 로깅 설정
-logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL),
-    format=settings.LOG_FORMAT
+CORS_ORIGINS = getattr(settings, "CORS_ORIGINS", ["*"])
+CORS_ALLOW_CREDENTIALS = bool(getattr(settings, "CORS_ALLOW_CREDENTIALS", True))
+CORS_ALLOW_METHODS = getattr(settings, "CORS_ALLOW_METHODS", ["*"])
+CORS_ALLOW_HEADERS = getattr(settings, "CORS_ALLOW_HEADERS", ["*"])
+
+UPLOAD_DIR = getattr(settings, "UPLOAD_DIR", "Backend/uploads")
+DOCS_DIR = getattr(settings, "DOCS_DIR", "Backend/rag/docs")
+RAG_INDEX_DIR = getattr(settings, "RAG_INDEX_DIR", "Backend/rag/indexes/faiss")
+
+# 선택: classifier 로드 지원
+classifier = None
+try:
+    from services.classifier import Classifier
+    classifier = Classifier()
+except Exception as e:
+    print(f"⚠️ classifier 준비 실패: {e} (스텁 모드)")
+
+# DB 헬스체크
+try:
+    from database import test_db_connection
+except Exception as e:
+    print(f"⚠️ database import 경고: {e}")
+
+    def test_db_connection() -> bool:
+        return False
+
+# 로깅
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.processors.JSONRenderer(),
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
 )
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
-# lifespan 이벤트 핸들러 정의 (on_event 대체)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    애플리케이션 시작 및 종료 이벤트 핸들러
-    """
     logger.info("애플리케이션 시작 중...")
-
-    # 테스트 환경에서는 데이터베이스 초기화 건너뛰기
-    if not os.getenv("TESTING"):
-        try:
-            init_db()
-            if not test_db_connection():
-                logger.error("데이터베이스 연결 실패")
-        except Exception as e:
-            logger.error(f"데이터베이스 초기화 실패: {str(e)}")
-    else:
-        logger.info("테스트 환경 - 데이터베이스 초기화 건너뜀")
-
-    yield  # 이 지점을 기준으로 위는 startup, 아래는 shutdown 코드
-
+    try:
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        os.makedirs(DOCS_DIR, exist_ok=True)
+        os.makedirs(RAG_INDEX_DIR, exist_ok=True)
+        if classifier is not None:
+            try:
+                classifier.load()
+                logger.info("분류 모델 로드 성공")
+            except Exception as e:
+                logger.warning("분류 모델 로드 실패 - 스텁 사용", error=str(e))
+    except Exception as e:
+        logger.error("초기화 실패", error=str(e))
+        raise
+    yield
     logger.info("애플리케이션 종료 중...")
     logger.info("애플리케이션 종료 완료")
 
-
 app = FastAPI(
-    title=settings.APP_NAME,
-    description="잎사귀 질병 감지 API",
-    version=settings.APP_VERSION,
-    lifespan=lifespan  # lifespan 이벤트 핸들러 등록
+    title=APP_NAME,
+    description=APP_NAME,
+    version=APP_VERSION,
+    lifespan=lifespan,
+    docs_url="/docs" if DEBUG else None,
+    redoc_url="/redoc" if DEBUG else None,
 )
 
-# Register classification routes
-from routes.predict import router as predict_router
-app.include_router(predict_router)
-
-# CORS 설정 최적화
+# 미들웨어
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
-    allow_methods=settings.CORS_ALLOW_METHODS,
-    allow_headers=settings.CORS_ALLOW_HEADERS,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=CORS_ALLOW_CREDENTIALS,
+    allow_methods=CORS_ALLOW_METHODS,
+    allow_headers=CORS_ALLOW_HEADERS,
 )
+
+# 요청 시간 측정
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    response.headers["X-Process-Time"] = f"{time.time() - start:.6f}"
+    return response
+
+# 🔗 API 라우터 연결 (안전 가드 포함)
+try:
+    from api import router as api_router
+    app.include_router(api_router, prefix=API_PREFIX)
+    logger.info("API 라우터 등록 성공", prefix=API_PREFIX)
+except Exception as exc:
+    logger.error("API 라우터 등록 실패", error=str(exc))
+    fallback = APIRouter(tags=["api"])
+
+    @fallback.get("/health")
+    async def api_health_fallback():
+        return {"status": "api_import_failed", "error": str(exc)}
+
+    app.include_router(fallback, prefix=API_PREFIX)
+
+# HealthCheck 모델 보완
+try:
+    from schemas import HealthCheck
+except Exception:
+    from pydantic import BaseModel
+
+    class HealthCheck(BaseModel):
+        status: str
+        service: str
+        timestamp: str
+        version: str
 
 @app.get("/health", response_model=HealthCheck)
 async def health_check_endpoint():
-    """헬스 체크 엔드포인트"""
     try:
-        # 데이터베이스 연결 확인
-        db_status = test_db_connection()
-
+        db_ok = test_db_connection()
         return {
-            "status": "healthy" if db_status else "unhealthy",
-            "service": "leaf-disease-detection-api",
+            "status": "healthy" if db_ok else "unhealthy",
+            "service": APP_NAME,
             "timestamp": "2024-01-01T12:00:00Z",
-            "version": "1.0.0"
+            "version": APP_VERSION,
         }
     except Exception as e:
-        logger.error(f"헬스 체크 실패: {str(e)}")
+        logger.error("헬스 체크 실패", error=str(e))
         return {
             "status": "unhealthy",
-            "service": "leaf-disease-detection-api",
+            "service": APP_NAME,
             "timestamp": "2024-01-01T12:00:00Z",
-            "version": "1.0.0"
+            "version": APP_VERSION,
         }
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "전역 예외 발생",
+        error=str(exc),
+        path=str(request.url.path),
+        method=request.method,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "내부 서버 오류가 발생했습니다."}
+    )
