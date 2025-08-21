@@ -393,9 +393,10 @@ onUnmounted(() => {
 .device-selection {
   margin-bottom: 30px;
   padding: 20px;
-  background-color: #f8f9fa;
+  background-color: rgba(255, 255, 255, 0.98);
   border-radius: 8px;
-  border: 1px solid #e9ecef;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(5px);
 }
 
 .device-list {
@@ -411,7 +412,6 @@ onUnmounted(() => {
   padding: 10px 15px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 14px;
   min-width: 300px;
   background-color: white;
 }
@@ -423,7 +423,6 @@ onUnmounted(() => {
   padding: 10px 15px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
 }
 
 .refresh-btn:hover:not(:disabled) {
@@ -454,13 +453,13 @@ onUnmounted(() => {
   min-width: 500px;
   max-width: 650px;
   padding: 30px;
-  background-color: #f5f5f5;
+  background-color: rgba(255, 255, 255, 0.98);
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(5px);
 }
 
 .webcam-section h3, .captured-section h3 {
-  color: #333;
   margin-bottom: 15px;
   text-align: left;
 }
@@ -470,7 +469,7 @@ onUnmounted(() => {
   margin-bottom: 25px;
   border-radius: 12px;
   overflow: hidden;
-  background-color: #f5f5f5;
+  background-color: rgba(255, 255, 255, 0.95);
   min-height: 400px;
   display: flex;
   align-items: center;
@@ -490,7 +489,6 @@ onUnmounted(() => {
 
 .webcam-placeholder, .no-device {
   padding: 40px;
-  color: #666;
 }
 
 .start-btn {
@@ -500,7 +498,6 @@ onUnmounted(() => {
   padding: 12px 24px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 16px;
   margin-top: 10px;
 }
 
@@ -520,12 +517,11 @@ onUnmounted(() => {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 16px;
   font-weight: 500;
 }
 
 .capture-btn {
-  background-color: #007bff;
+  background-color: var(--color-primary);
   color: white;
 }
 
@@ -539,7 +535,7 @@ onUnmounted(() => {
 }
 
 .stop-btn {
-  background-color: #dc3545;
+  background-color: var(--color-danger);
   color: white;
 }
 
@@ -588,7 +584,6 @@ onUnmounted(() => {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
 }
 
 .download-btn {
@@ -625,7 +620,6 @@ onUnmounted(() => {
 
 .no-image {
   padding: 40px;
-  color: #666;
 }
 
 .analysis-section {
@@ -635,15 +629,15 @@ onUnmounted(() => {
 .usage-guide {
   margin-top: 40px;
   padding: 30px;
-  background-color: #f8f9fa;
+  background-color: rgba(255, 255, 255, 0.98);
   border-radius: 12px;
-  border: 1px solid #e9ecef;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(5px);
 }
 
 .usage-guide h3 {
   text-align: center;
   margin-bottom: 25px;
-  color: #333;
 }
 
 .guide-steps {
@@ -663,7 +657,7 @@ onUnmounted(() => {
 .step-number {
   width: 40px;
   height: 40px;
-  background-color: #007bff;
+  background-color: var(--color-primary);
   color: white;
   border-radius: 50%;
   display: flex;
@@ -676,31 +670,26 @@ onUnmounted(() => {
 
 .step-content h4 {
   margin: 0 0 8px 0;
-  color: #333;
   font-size: 16px;
 }
 
 .step-content p {
   margin: 0;
-  color: #666;
   font-size: 14px;
   line-height: 1.5;
 }
 
 h2 {
-  color: #333;
   margin-bottom: 10px;
   font-size: 28px;
 }
 
 .subtitle {
-  color: #666;
   margin-bottom: 30px;
   font-size: 16px;
 }
 
 h3 {
-  color: #555;
   margin-bottom: 15px;
 }
 
@@ -751,10 +740,106 @@ h3 {
   .device-list {
     flex-direction: column;
     align-items: center;
+    gap: 12px;
   }
 
   .device-select {
-    min-width: 250px;
+    width: 100%;
+    max-width: 300px;
+    min-width: auto;
+    padding: 8px 12px;
+  }
+
+  .device-controls {
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .device-controls button {
+    width: 100%;
+    max-width: 200px;
+    padding: 10px 16px;
+  }
+
+  .main-content {
+    gap: 20px;
+  }
+
+  .webcam-section, .captured-section {
+    padding: 16px;
+  }
+
+  .image-actions {
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .image-actions button {
+    width: 100%;
+    max-width: 200px;
+    padding: 10px 16px;
+  }
+
+  .captured-image {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .video-container {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .video-container video {
+    width: 100%;
+    height: auto;
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .usb-webcam-container {
+    padding: 12px;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+  }
+
+  .device-select {
+    padding: 6px 10px;
+  }
+
+  .device-controls button {
+    padding: 8px 12px;
+  }
+
+  .image-actions button {
+    padding: 8px 12px;
+  }
+
+  .usage-guide {
+    padding: 16px;
+  }
+
+  .step {
+    gap: 10px;
+  }
+
+  .step-number {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .step-content h4 {
+    font-size: 14px;
   }
 }
 </style>

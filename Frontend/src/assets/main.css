@@ -1,4 +1,5 @@
 @import './base.css';
+@import './mobile-pwa.css';
 
 #app {
   max-width: 1280px;

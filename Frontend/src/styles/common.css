@@ -1,0 +1,41 @@
+/* 공통 스타일 정의 */
+
+/* 공통 색상 */
+:root {
+  --color-primary: #007bff;
+  --color-danger: #dc3545;
+  --color-success: #28a745;
+  --color-warning: #ffc107;
+  --color-gray-light: #f5f5f5;
+  --color-gray-dark: #333;
+  --color-gray-medium: #666;
+  --color-white: #ffffff;
+
+  /* 파스텔 배경색 - 가장 진하게 조정 */
+  --color-pastel-green: #a8d5ba;
+  --color-pastel-yellow: #ffeaa7;
+  --color-pastel-green-light: #c3e6cb;
+  --color-pastel-yellow-light: #fff3cd;
+}
+
+/* 전역 배경 스타일 */
+body {
+  background: linear-gradient(135deg,
+    var(--color-pastel-green-light) 0%,
+    var(--color-pastel-yellow-light) 25%,
+    var(--color-pastel-green) 50%,
+    var(--color-pastel-yellow) 75%,
+    var(--color-pastel-green-light) 100%
+  );
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* 앱 컨테이너 배경 */
+#app {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  min-height: 100vh;
+}
+
+/* 공통 색상 변수만 유지 */
