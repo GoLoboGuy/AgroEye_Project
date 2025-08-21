@@ -55,6 +55,21 @@ class Classifier:
                 image = Image.open(image_path).convert("RGB")
                 prediction = self.model.predict_one(image)
                 
+                # 신뢰도 검증 수행
+                mobilenet_conf = prediction["mobilenet"]["confidence"]
+                resnet50_conf = prediction["resnet50"]["confidence"]
+                
+                # 신뢰도 검증: 두 분류기의 결과가 모두 0.75 이하이거나 차이가 0.3 이상인 경우
+                if (mobilenet_conf <= 0.75 and resnet50_conf <= 0.75) or abs(mobilenet_conf - resnet50_conf) >= 0.3:
+                    # 예외: 한쪽의 결과가 0.98 이상이면 해당 결과 사용
+                    if mobilenet_conf >= 0.98:
+                        return prediction["mobilenet"]["label"], mobilenet_conf
+                    elif resnet50_conf >= 0.98:
+                        return prediction["resnet50"]["label"], resnet50_conf
+                    else:
+                        # Unknown으로 분류
+                        return "Unknown", 0.0
+                
                 # 선택된 모델의 결과 반환
                 picked = prediction["picked"]
                 return picked["label"], picked["confidence"]
@@ -88,6 +103,35 @@ class Classifier:
                 # 이미지 로드 및 예측
                 image = Image.open(image_path).convert("RGB")
                 prediction = self.model.predict_one(image)
+                
+                # 신뢰도 검증 수행
+                mobilenet_conf = prediction["mobilenet"]["confidence"]
+                resnet50_conf = prediction["resnet50"]["confidence"]
+                
+                # 신뢰도 검증: 두 분류기의 결과가 모두 0.75 이하이거나 차이가 0.3 이상인 경우
+                if (mobilenet_conf <= 0.75 and resnet50_conf <= 0.75) or abs(mobilenet_conf - resnet50_conf) >= 0.3:
+                    # 예외: 한쪽의 결과가 0.98 이상이면 해당 결과 사용
+                    if mobilenet_conf >= 0.98:
+                        # MobileNet 결과 사용
+                        prediction["picked"] = {
+                            "model": "MobileNetV2",
+                            "label": prediction["mobilenet"]["label"],
+                            "confidence": mobilenet_conf
+                        }
+                    elif resnet50_conf >= 0.98:
+                        # ResNet50 결과 사용
+                        prediction["picked"] = {
+                            "model": "ResNet50",
+                            "label": prediction["resnet50"]["label"],
+                            "confidence": resnet50_conf
+                        }
+                    else:
+                        # Unknown으로 분류
+                        prediction["picked"] = {
+                            "model": "Unknown",
+                            "label": "Unknown",
+                            "confidence": 0.0
+                        }
                 
                 # 결과에 이미지 경로 추가
                 prediction["image_path"] = image_path

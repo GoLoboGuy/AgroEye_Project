@@ -72,11 +72,32 @@ async def predict(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"classifier error: {e}")
 
-    # 3) 클래스 → 동의어/한글 질의 변환
+    # 3) Unknown 클래스인 경우 특별 처리
+    if class_name == "Unknown":
+        warning_message = (
+            "⚠️ 신뢰도 부족으로 인한 분류 실패\n\n"
+            "분류 모델의 신뢰도가 낮거나 모델 간 결과 차이가 커서 정확한 분류를 수행할 수 없습니다.\n\n"
+            "권장사항:\n"
+            "- 더 선명하고 품질이 좋은 이미지를 사용해주세요\n"
+            "- 잎사귀가 이미지 중앙에 잘 보이도록 촬영해주세요\n"
+            "- 다른 각도에서 촬영해보세요"
+        )
+        
+        return PredictResponse(
+            id=0,  # DB에 저장하지 않으므로 0
+            class_name="Unknown",
+            confidence=0.0,
+            recomm=warning_message,
+            image_path=str(save_path),
+            sources=[],  # 소스 정보 없음
+            detailed_prediction=detailed_result,
+        )
+
+    # 4) 클래스 → 동의어/한글 질의 변환
     terms = class_to_query_terms(class_name)
     boolean_query = as_boolean_query(terms)
 
-    # 4) RAG 검색 + 설명 생성
+    # 5) RAG 검색 + 설명 생성
     if not rag:
         raise HTTPException(status_code=500, detail="RAG 서비스가 초기화되지 않았습니다. 인덱스를 먼저 생성하세요.")
     retrieved: List[Retrieved] = rag.search(boolean_query, k=4)
@@ -87,7 +108,7 @@ async def predict(file: UploadFile = File(...)):
     # Pydantic 모델로 감싸도 되고(dict 그대로도 OK)
     sources_items = [SourceItem(**d) for d in sources_dicts]
 
-    # 5) DB 저장 (JSON 직렬화에는 dict가 적합)
+    # 6) DB 저장 (JSON 직렬화에는 dict가 적합)
     class_info_obj = {
         "query_terms": terms,
         "boolean_query": boolean_query,
