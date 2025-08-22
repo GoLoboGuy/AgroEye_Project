@@ -13,7 +13,8 @@ export default defineConfig({
     allowedHosts: [
       'localhost',
       '127.0.0.1',
-      '993c5e00d19a.ngrok-free.app'
+      '.ngrok-free.app', // 모든 ngrok 도메인 허용
+      '.ngrok.io'        // 구버전 ngrok도 허용
     ]
   },
   plugins: [
