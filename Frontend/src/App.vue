@@ -9,14 +9,14 @@ import PWAUpdatePrompt from './components/PWAUpdatePrompt.vue'
     <header class="app-header">
       <div class="header-content">
         <h1>🌱 AgroEye</h1>
-        <p>AI 기반 식물 병충해 진단 시스템</p>
+        <p>AI 기반 농작물 질병 진단 시스템</p>
       </div>
     </header>
     <main class="app-main">
       <USBWebcamCapture />
     </main>
     <footer class="app-footer">
-      <p>&copy; 2024 AgroEye. AI 기반 식물 병충해 진단 시스템</p>
+      <p>&copy; 2025 AgroEye. AI 기반 농작물 질병 진단 시스템</p>
     </footer>
     <PWAInstallPrompt />
     <PWAUpdatePrompt />

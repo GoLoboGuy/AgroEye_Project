@@ -3,7 +3,7 @@ import USBWebcamCapture from '../components/USBWebcamCapture.vue'
 </script>
 
 <template>
-  <main>
+  <main class="home-view">
     <USBWebcamCapture />
   </main>
 </template>

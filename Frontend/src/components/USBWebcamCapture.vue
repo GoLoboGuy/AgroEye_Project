@@ -1,11 +1,14 @@
 <template>
   <div class="usb-webcam-container">
-    <h2>🌱 식물 병충해 진단 시스템</h2>
-    <p class="subtitle">웹캠으로 작물을 촬영하여 AI가 병충해를 진단해드립니다</p>
+    <h2>🌱 농작물 질병 진단 시스템</h2>
+    <p class="subtitle">카메라로 작물을 촬영하여 AI가 질병을 진단해드립니다</p>
 
-    <!-- 웹캠 선택 섹션 -->
+    <!-- 카메라 선택 섹션 -->
     <div class="device-selection">
-      <h3>웹캠 장치 선택</h3>
+      <div class="section-header">
+        <div class="icon-wrapper">🎥</div>
+        <h3>카메라 장치 선택</h3>
+      </div>
       <div class="device-list">
         <select
           v-model="selectedDeviceId"
@@ -13,7 +16,7 @@
           class="device-select"
           :disabled="isStreamActive"
         >
-          <option value="">웹캠 장치를 선택하세요</option>
+          <option value="">카메라 장치를 선택하세요</option>
           <option
             v-for="device in availableDevices"
             :key="device.deviceId"
@@ -39,6 +42,10 @@
 
     <!-- 분석 결과가 있을 때 -->
     <div v-if="analysisResult" class="analysis-section">
+      <div class="section-header">
+        <div class="icon-wrapper">📊</div>
+        <h3>분석 결과</h3>
+      </div>
       <AnalysisResult
         :result="analysisResult"
         :loading="isAnalyzing"
@@ -51,9 +58,12 @@
 
     <!-- 메인 콘텐츠 영역 -->
     <div v-else class="main-content">
-      <!-- 웹캠 화면 섹션 -->
+      <!-- 카메라 화면 섹션 -->
       <div class="webcam-section">
-        <h3>웹캠 화면</h3>
+        <div class="section-header">
+          <div class="icon-wrapper">📹</div>
+          <h3>카메라 화면</h3>
+        </div>
         <div class="webcam-wrapper">
           <video
             ref="videoRef"
@@ -64,13 +74,13 @@
           ></video>
 
           <div v-if="!isStreamActive && selectedDeviceId" class="webcam-placeholder">
-            <p>선택된 USB 웹캠을 시작하려면 아래 버튼을 클릭하세요</p>
-            <button @click="startUSBWebcam" class="start-btn">USB 웹캠 시작</button>
+            <p>선택된 카메라를 시작하려면 아래 버튼을 클릭하세요</p>
+            <button @click="startUSBWebcam" class="start-btn">카메라 시작</button>
           </div>
 
           <div v-if="!selectedDeviceId" class="no-device">
-            <p>사용 가능한 USB 웹캠이 없습니다.</p>
-            <p>USB 웹캠을 연결하고 "장치 새로고침" 버튼을 클릭하세요.</p>
+            <p>사용 가능한 카메라가 없습니다.</p>
+            <p>카메라를 연결하고 "장치 새로고침" 버튼을 클릭하세요.</p>
           </div>
 
           <canvas ref="canvasRef" class="capture-canvas" style="display: none;"></canvas>
@@ -92,14 +102,17 @@
             :disabled="!isStreamActive"
             class="stop-btn"
           >
-            웹캠 중지
+            카메라 중지
           </button>
         </div>
       </div>
 
       <!-- 촬영된 이미지 섹션 -->
       <div class="captured-section">
-        <h3>촬영된 이미지</h3>
+        <div class="section-header">
+          <div class="icon-wrapper">📸</div>
+          <h3>촬영된 이미지</h3>
+        </div>
         <div class="captured-image-container">
           <div v-if="capturedImage" class="captured-image">
             <img :src="capturedImage" alt="촬영된 이미지" class="captured-img" />
@@ -119,7 +132,7 @@
 
           <div v-else class="no-image">
             <p>촬영된 이미지가 없습니다.</p>
-            <p>웹캠을 시작하고 "촬영 및 진단" 버튼을 클릭하세요.</p>
+            <p>카메라를 시작하고 "촬영 및 진단" 버튼을 클릭하세요.</p>
           </div>
         </div>
       </div>
@@ -127,13 +140,16 @@
 
     <!-- 사용 가이드 -->
     <div class="usage-guide">
-      <h3>사용 방법</h3>
+      <div class="section-header">
+        <div class="icon-wrapper">ℹ️</div>
+        <h3>사용 방법</h3>
+      </div>
       <div class="guide-steps">
         <div class="step">
           <div class="step-number">1</div>
           <div class="step-content">
-            <h4>웹캠 연결</h4>
-            <p>USB 웹캠을 연결하고 장치를 선택하세요</p>
+            <h4>카메라 연결</h4>
+            <p>카메라를 연결하고 장치를 선택하세요</p>
           </div>
         </div>
         <div class="step">
@@ -147,7 +163,7 @@
           <div class="step-number">3</div>
           <div class="step-content">
             <h4>AI 진단</h4>
-            <p>AI가 자동으로 병충해를 분석하고 결과를 제공합니다</p>
+            <p>AI가 자동으로 질병을 분석하고 결과를 제공합니다</p>
           </div>
         </div>
       </div>
@@ -158,7 +174,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import AnalysisResult from './AnalysisResult.vue'
-import { apiService, type ModelPrediction } from '../services/api'
+import { apiService, type PredictResponse } from '../services/api'
 
 interface MediaDeviceInfo {
   deviceId: string
@@ -177,7 +193,7 @@ const deviceError = ref<string>('')
 const selectedDeviceLabel = ref<string>('')
 
 // AI 분석 관련 상태
-const analysisResult = ref<ModelPrediction | null>(null)
+const analysisResult = ref<PredictResponse | null>(null)
 const isAnalyzing = ref(false)
 const analysisError = ref<string | null>(null)
 
@@ -220,10 +236,10 @@ const onDeviceChange = () => {
   selectedDeviceLabel.value = selectedDevice?.label || '알 수 없는 장치'
 }
 
-// USB 웹캠 시작
+// 카메라 시작
 const startUSBWebcam = async () => {
   if (!selectedDeviceId.value) {
-    deviceError.value = '웹캠 장치를 선택해주세요.'
+    deviceError.value = '카메라 장치를 선택해주세요.'
     return
   }
 
@@ -244,15 +260,15 @@ const startUSBWebcam = async () => {
       isStreamActive.value = true
       deviceError.value = ''
 
-      console.log('USB 웹캠 시작됨:', selectedDeviceLabel.value)
+      console.log('카메라 시작됨:', selectedDeviceLabel.value)
     }
   } catch (error) {
-    console.error('USB 웹캠 시작 오류:', error)
-    deviceError.value = `선택된 USB 웹캠을 시작할 수 없습니다: ${error}`
+    console.error('카메라 시작 오류:', error)
+    deviceError.value = `선택된 카메라를 시작할 수 없습니다: ${error}`
   }
 }
 
-// USB 웹캠 중지
+// 카메라 중지
 const stopUSBWebcam = () => {
   if (mediaStream.value) {
     mediaStream.value.getTracks().forEach(track => track.stop())
@@ -264,7 +280,7 @@ const stopUSBWebcam = () => {
   }
 
   isStreamActive.value = false
-  console.log('USB 웹캠 중지됨')
+  console.log('카메라 중지됨')
 }
 
 // 이미지 촬영
@@ -354,14 +370,8 @@ const saveAnalysisResult = async () => {
   if (!analysisResult.value || !capturedImage.value) return
 
   try {
-    // Base64 이미지를 File 객체로 변환
-    const response = await fetch(capturedImage.value)
-    const blob = await response.blob()
-    const file = new File([blob], 'captured-image.jpg', { type: 'image/jpeg' })
-
-    // Backend에 저장
-    const results = await apiService.uploadAndAnalyzeImage(file)
-    console.log('분석 결과 저장 완료:', results)
+    // 이미 analyzeImage에서 저장되므로 현재 결과만 로그
+    console.log('분석 결과 저장 완료:', analysisResult.value)
 
     // 성공 메시지 표시 (실제로는 토스트나 알림을 사용할 수 있음)
     alert('분석 결과가 성공적으로 저장되었습니다.')
@@ -377,26 +387,274 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  // 컴포넌트 언마운트 시 웹캠 정리
+  // 컴포넌트 언마운트 시 카메라 정리
   stopUSBWebcam()
 })
 </script>
 
 <style scoped>
+/* 기존 스타일에 추가 */
 .usb-webcam-container {
   max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
   text-align: center;
+  color: #000000;
+  /* AgroEye 헤더와 같은 파란색-보라색 그라데이션으로 변경 */
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+  min-height: 100vh;
+  position: relative;
 }
 
+/* 배경 패턴 추가 */
+.usb-webcam-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 1px, transparent 1px),
+    radial-gradient(circle at 75% 75%, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+}
+
+/* 컨테이너 내용을 배경 위로 */
+.usb-webcam-container > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 카드 공통 스타일 */
+.device-selection,
+.webcam-section,
+.captured-section,
+.usage-guide {
+  background: rgb(230, 252, 212);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 카드 호버 효과 */
+.device-selection:hover,
+.webcam-section:hover,
+.captured-section:hover,
+.usage-guide:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 카드 상단 장식 */
+.device-selection::before,
+.webcam-section::before,
+.captured-section::before,
+.usage-guide::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+  border-radius: 16px 16px 0 0;
+}
+
+/* 섹션 헤더 스타일 */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid rgba(102, 126, 234, 0.1);
+}
+
+.icon-wrapper {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.section-header h3 {
+  margin: 0;
+  color: #2d3748;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* 버튼 공통 스타일 */
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 버튼 호버 효과 */
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* 주요 액션 버튼 */
+.capture-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.start-btn {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+}
+
+.stop-btn {
+  background: linear-gradient(135deg, #dc3545, #e74c3c);
+  color: white;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+}
+
+/* 보조 버튼 */
+.download-btn {
+  background: linear-gradient(135deg, #ffc107, #ffb300);
+  color: #212529;
+  box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4);
+}
+
+.clear-btn {
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  color: white;
+  box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4);
+}
+
+.analyze-btn {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+  color: white;
+  box-shadow: 0 4px 15px rgba(23, 162, 184, 0.4);
+}
+
+.refresh-btn {
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  color: white;
+  box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4);
+}
+
+/* 사용 가이드 스타일 개선 */
+.guide-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-top: 30px;
+}
+
+.step {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.step:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.step-number {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.step-content h4 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.step-content p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #4a5568;
+}
+
+/* 페이드인 애니메이션 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.device-selection,
+.webcam-section,
+.captured-section,
+.usage-guide {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* 순차적 애니메이션 */
+.device-selection { animation-delay: 0.1s; }
+.webcam-section { animation-delay: 0.2s; }
+.captured-section { animation-delay: 0.3s; }
+.usage-guide { animation-delay: 0.4s; }
+
+/* 로딩 애니메이션 개선 */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.webcam-placeholder,
+.no-device,
+.no-image {
+  animation: pulse 2s infinite;
+}
+
+/* 기존 스타일 유지하면서 개선 */
 .device-selection {
   margin-bottom: 30px;
   padding: 20px;
-  background-color: rgba(255, 255, 255, 0.98);
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(5px);
 }
 
 .device-list {
@@ -414,24 +672,6 @@ onUnmounted(() => {
   border-radius: 4px;
   min-width: 300px;
   background-color: white;
-}
-
-.refresh-btn {
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.refresh-btn:hover:not(:disabled) {
-  background-color: #5a6268;
-}
-
-.refresh-btn:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
 }
 
 .error-message {
@@ -453,10 +693,6 @@ onUnmounted(() => {
   min-width: 500px;
   max-width: 650px;
   padding: 30px;
-  background-color: rgba(255, 255, 255, 0.98);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(5px);
 }
 
 .webcam-section h3, .captured-section h3 {
@@ -489,20 +725,7 @@ onUnmounted(() => {
 
 .webcam-placeholder, .no-device {
   padding: 40px;
-}
-
-.start-btn {
-  background-color: #28a745;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-top: 10px;
-}
-
-.start-btn:hover {
-  background-color: #218838;
+  color: #000000;
 }
 
 .controls {
@@ -510,42 +733,6 @@ onUnmounted(() => {
   gap: 10px;
   justify-content: center;
   flex-wrap: wrap;
-}
-
-.capture-btn, .stop-btn {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.capture-btn {
-  background-color: var(--color-primary);
-  color: white;
-}
-
-.capture-btn:hover:not(:disabled) {
-  background-color: #0056b3;
-}
-
-.capture-btn:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
-.stop-btn {
-  background-color: var(--color-danger);
-  color: white;
-}
-
-.stop-btn:hover:not(:disabled) {
-  background-color: #c82333;
-}
-
-.stop-btn:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
 }
 
 .captured-image-container {
@@ -579,47 +766,9 @@ onUnmounted(() => {
   margin-top: 15px;
 }
 
-.download-btn, .clear-btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.download-btn {
-  background-color: #ffc107;
-  color: #212529;
-}
-
-.download-btn:hover {
-  background-color: #e0a800;
-}
-
-.clear-btn {
-  background-color: #6c757d;
-  color: white;
-}
-
-.clear-btn:hover {
-  background-color: #5a6268;
-}
-
-.analyze-btn {
-  background-color: #17a2b8;
-  color: white;
-}
-
-.analyze-btn:hover:not(:disabled) {
-  background-color: #138496;
-}
-
-.analyze-btn:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
 .no-image {
   padding: 40px;
+  color: #000000;
 }
 
 .analysis-section {
@@ -629,10 +778,6 @@ onUnmounted(() => {
 .usage-guide {
   margin-top: 40px;
   padding: 30px;
-  background-color: rgba(255, 255, 255, 0.98);
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(5px);
 }
 
 .usage-guide h3 {
@@ -640,57 +785,23 @@ onUnmounted(() => {
   margin-bottom: 25px;
 }
 
-.guide-steps {
-  display: flex;
-  gap: 30px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.step {
-  display: flex;
-  align-items: flex-start;
-  gap: 15px;
-  max-width: 250px;
-}
-
-.step-number {
-  width: 40px;
-  height: 40px;
-  background-color: var(--color-primary);
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 18px;
-  flex-shrink: 0;
-}
-
-.step-content h4 {
-  margin: 0 0 8px 0;
-  font-size: 16px;
-}
-
-.step-content p {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
 h2 {
   margin-bottom: 10px;
   font-size: 28px;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .subtitle {
   margin-bottom: 30px;
   font-size: 16px;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 h3 {
   margin-bottom: 15px;
+  color: #000000;
 }
 
 @media (max-width: 1200px) {
@@ -712,90 +823,32 @@ h3 {
 }
 
 @media (max-width: 768px) {
+  /* 섹션 전체를 뷰포트 가로로 확장 (full-bleed) */
   .usb-webcam-container {
-    padding: 16px;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: 0;
   }
 
-  h2 {
-    font-size: 24px;
-  }
-
-  .subtitle {
-    font-size: 14px;
-  }
-
-  .guide-steps {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .step {
-    max-width: 100%;
-  }
-
+  /* 카드 폭을 가득 채우고, 반응형 모서리로 조정 */
+  .device-selection,
+  .webcam-section,
+  .captured-section,
   .usage-guide {
-    padding: 20px;
-  }
-
-  .device-list {
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .device-select {
     width: 100%;
-    max-width: 300px;
-    min-width: auto;
-    padding: 8px 12px;
-  }
-
-  .device-controls {
-    flex-direction: column;
-    gap: 12px;
-    align-items: center;
-  }
-
-  .device-controls button {
-    width: 100%;
-    max-width: 200px;
-    padding: 10px 16px;
-  }
-
-  .main-content {
-    gap: 20px;
-  }
-
-  .webcam-section, .captured-section {
-    padding: 16px;
-  }
-
-  .image-actions {
-    flex-direction: column;
-    gap: 10px;
-    align-items: center;
-  }
-
-  .image-actions button {
-    width: 100%;
-    max-width: 200px;
-    padding: 10px 16px;
-  }
-
-  .captured-image {
     max-width: 100%;
-    height: auto;
+    min-width: 0;
+    margin-left: 0;
+    margin-right: 0;
+    border-radius: 10px;
   }
 
-  .video-container {
-    max-width: 100%;
-    overflow: hidden;
-  }
-
-  .video-container video {
+  /* 사용 방법 그리드가 부모 폭을 꽉 사용 */
+  .guide-steps {
     width: 100%;
-    height: auto;
-    max-height: 300px;
   }
 }
 
@@ -814,10 +867,6 @@ h3 {
 
   .device-select {
     padding: 6px 10px;
-  }
-
-  .device-controls button {
-    padding: 8px 12px;
   }
 
   .image-actions button {
