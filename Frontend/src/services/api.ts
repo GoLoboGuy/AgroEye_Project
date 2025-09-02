@@ -1,7 +1,10 @@
 import axios from 'axios'
 
-// API 기본 설정
-const API_BASE_URL = 'http://localhost:8000/api'
+// 환경 변수에서 API URL 읽기 (프록시 사용 시 '/api', 직접 연결 시 전체 URL)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+
+// 디버그 모드 확인
+const DEBUG_MODE = import.meta.env.VITE_DEBUG === 'true'
 
 // Backend API 클라이언트
 export const backendApi = axios.create({
@@ -12,6 +15,41 @@ export const backendApi = axios.create({
   },
   withCredentials: false, // CORS 문제 방지
 })
+
+// API 연결 상태 확인을 위한 헬퍼 함수 (개발자용, 콘솔에서만 표시)
+export const checkApiConnection = async (): Promise<boolean> => {
+  try {
+    const healthUrl = API_BASE_URL.startsWith('/')
+      ? '/health'  // 프록시 사용 시
+      : API_BASE_URL.replace('/api', '/health')  // 직접 연결 시
+
+    const response = await axios.get(healthUrl, { timeout: 5000 })
+
+    if (DEBUG_MODE) {
+      console.log('✅ API 연결 성공:', healthUrl)
+    }
+    return response.status === 200
+  } catch (error) {
+    if (DEBUG_MODE) {
+      console.error('❌ API 연결 실패:', error)
+      console.log('🔧 디버깅 정보:')
+      console.log('   - API URL:', API_BASE_URL)
+      console.log('   - 프록시 사용:', API_BASE_URL.startsWith('/'))
+      console.log('   - 환경 변수 VITE_DEBUG:', DEBUG_MODE)
+    }
+    return false
+  }
+}
+
+// 현재 사용 중인 API URL 확인용 함수 (개발자용)
+export const getCurrentApiUrl = (): string => {
+  return API_BASE_URL
+}
+
+// 현재 프록시 사용 여부 확인 (개발자용)
+export const isUsingProxy = (): boolean => {
+  return API_BASE_URL.startsWith('/')
+}
 
 // 응답 인터셉터 추가 (에러 처리)
 backendApi.interceptors.response.use(
@@ -180,7 +218,11 @@ export const apiService = {
   // 헬스 체크
   async healthCheck(): Promise<HealthCheck> {
     try {
-      const response = await axios.get<HealthCheck>('http://localhost:8000/health')
+      const healthUrl = API_BASE_URL.startsWith('/')
+        ? '/health'  // 프록시 사용 시
+        : API_BASE_URL.replace('/api', '/health')  // 직접 연결 시
+
+      const response = await axios.get<HealthCheck>(healthUrl)
       return response.data
     } catch (error) {
       throw error

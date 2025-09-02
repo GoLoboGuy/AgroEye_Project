@@ -47,33 +47,31 @@ const dismissUpdate = () => {
 
 <style scoped>
 .pwa-update-prompt {
-  position: fixed;
+  @apply pwa-prompt;
   top: 20px;
   right: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.05);
   padding: 16px;
   max-width: 300px;
-  z-index: 1000;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  animation: fadeInUp 0.6s ease-out;
 }
 
 .pwa-update-prompt:hover {
-  transform: translateY(-4px);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.15),
-    0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
-.pwa-update-prompt::before {
+/* PWA 공통 스타일 (상단에서 사용) */
+.pwa-prompt {
+  position: fixed;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.pwa-prompt::before {
   content: '';
   position: absolute;
   top: 0;
@@ -84,16 +82,9 @@ const dismissUpdate = () => {
   border-radius: 16px 16px 0 0;
 }
 
-/* 페이드인 애니메이션 */
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .pwa-update-content {
@@ -130,40 +121,29 @@ const dismissUpdate = () => {
   margin-top: 8px;
 }
 
-.pwa-update-btn {
-  background: linear-gradient(135deg, #ffc107, #ffb300);
-  color: #212529;
+.pwa-update-buttons button {
   border: none;
   padding: 6px 12px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4);
+  transition: all 0.2s ease;
 }
 
-.pwa-update-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 193, 7, 0.6);
+.pwa-update-btn {
+  background: linear-gradient(135deg, #ffc107, #ffb300);
+  color: #212529;
 }
 
 .pwa-dismiss-btn {
   background: linear-gradient(135deg, #6c757d, #5a6268);
   color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4);
 }
 
-.pwa-dismiss-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(108, 117, 125, 0.6);
+.pwa-update-buttons button:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
 }
 
 @media (max-width: 480px) {
@@ -172,6 +152,11 @@ const dismissUpdate = () => {
     right: 10px;
     left: 10px;
     max-width: none;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 }
 </style>

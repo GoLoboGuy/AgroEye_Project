@@ -43,11 +43,8 @@ body {
 }
 
 .app-header {
-  background: linear-gradient(135deg,
-    rgba(102, 126, 234, 0.9) 0%,
-    rgba(118, 75, 162, 0.9) 100%
-  );
-  color: white;
+  background-color: rgba(255, 255, 240, 1);
+  color: rgb(0, 0, 0);
   padding: 20px 0;
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);

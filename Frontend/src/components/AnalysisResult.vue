@@ -24,7 +24,22 @@
 
         <div class="prediction-info">
           <div class="prediction-main">
-            <h4>{{ getDiseaseName(result.class_name) }}</h4>
+            <!-- 건강한 상태인 경우 이모지와 함께 표시 -->
+            <div v-if="result.class_name.includes('healthy')" class="healthy-status-inline">
+              <span class="healthy-icon-inline">🌱</span>
+              <h2 class="healthy-status-text">건강한 상태입니다!</h2>
+            </div>
+            <!-- Unknown 상태인 경우 느낌표 표지판 이모지와 함께 표시 -->
+            <div v-else-if="result.class_name === 'Unknown'" class="unknown-status-inline">
+              <span class="unknown-icon-inline">🚫</span>
+              <h2 class="unknown-status-text">분석을 할 수 없습니다</h2>
+            </div>
+            <!-- 질병인 경우 경고 이모지와 함께 표시 -->
+            <div v-else class="disease-status-inline">
+              <span class="disease-icon-inline">⚠️</span>
+              <h2 class="disease-status-text">질병이 감지되었습니다!</h2>
+              <h4 class="disease-name">{{ getDiseaseName(result.class_name) }}</h4>
+            </div>
             <p class="model-used">분석 완료</p>
           </div>
         </div>
@@ -46,32 +61,42 @@
           <h3>참고 자료</h3>
         </div>
         <div class="sources-content">
-          <div v-for="(source, index) in result.sources" :key="index" class="source-item">
-            <div class="source-title">{{ source.title || '참고 자료' }}</div>
-            <div class="source-snippet">{{ source.snippet }}</div>
+          <!-- 첫 번째 카드 (항상 표시) -->
+          <div v-if="result.sources[0]" class="source-item">
+            <div class="source-title">{{ result.sources[0].title || '참고 자료' }}</div>
+            <div class="source-snippet">{{ result.sources[0].snippet }}</div>
             <div class="source-meta">
-              <span v-if="source.page">페이지: {{ source.page }}</span>
-              <span v-if="source.score">신뢰도: {{ Math.round(source.score * 100) }}%</span>
+              <span v-if="result.sources[0].page">페이지: {{ result.sources[0].page }}</span>
+            </div>
+          </div>
+
+          <!-- 더 보기/접기 버튼 -->
+          <div v-if="result.sources.length > 1" class="toggle-sources">
+            <button @click="showAllSources = !showAllSources" class="toggle-btn">
+              <span v-if="!showAllSources">
+                더 보기 ({{ result.sources.length - 1 }}개 더)
+              </span>
+              <span v-else>
+                접기
+              </span>
+              <span class="toggle-icon" :class="{ 'expanded': showAllSources }">▼</span>
+            </button>
+          </div>
+
+          <!-- 나머지 카드들 (접을 수 있음) -->
+          <div v-if="showAllSources" class="additional-sources">
+            <div v-for="(source, index) in result.sources.slice(1)" :key="index + 1" class="source-item">
+              <div class="source-title">{{ source.title || '참고 자료' }}</div>
+              <div class="source-snippet">{{ source.snippet }}</div>
+              <div class="source-meta">
+                <span v-if="source.page">페이지: {{ source.page }}</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 건강한 상태인 경우 -->
-      <div v-if="result.class_name.includes('healthy')" class="healthy-status">
-        <div class="healthy-icon">🌱</div>
-        <h3>건강한 상태입니다!</h3>
-        <p>{{ getDiseaseName(result.class_name) }}</p>
-        <div class="health-tips">
-          <h4>건강 유지를 위한 팁</h4>
-          <ul>
-            <li>정기적인 관찰과 관리</li>
-            <li>적절한 수분 공급</li>
-            <li>균형 잡힌 비료 사용</li>
-            <li>적절한 햇빛과 통풍</li>
-          </ul>
-        </div>
-      </div>
+
 
       <!-- 액션 버튼들 -->
       <div class="action-buttons">
@@ -87,6 +112,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { PredictResponse } from '../services/api'
 
 interface Props {
@@ -102,9 +128,11 @@ defineEmits<{
   'save-result': []
 }>()
 
-// 질병 이름 변환 (Backend에서 받은 class_name 사용)
+// 참고자료 펼치기/접기 상태
+const showAllSources = ref(false)
+
+// 질병 이름 변환
 const getDiseaseName = (className: string): string => {
-  // Backend에서 받은 class_name을 그대로 사용하거나 한글로 변환
   return className || '알 수 없는 질병'
 }
 
@@ -125,34 +153,30 @@ const getConfidenceClass = (confidence: number): string => {
   animation: fadeInUp 0.6s ease-out;
 }
 
-/* 페이드인 애니메이션 */
+/* 공통 애니메이션 */
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.loading-container {
-  text-align: center;
-  padding: 60px 20px;
-  color: #000000;
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 공통 컨테이너 스타일 */
+.card-container {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   position: relative;
   overflow: hidden;
+  transition: all 0.3s ease;
 }
 
-.loading-container::before {
+.card-container::before {
   content: '';
   position: absolute;
   top: 0;
@@ -161,6 +185,18 @@ const getConfidenceClass = (confidence: number): string => {
   height: 4px;
   background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
   border-radius: 16px 16px 0 0;
+}
+
+.card-container:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.loading-container {
+  @apply card-container;
+  text-align: center;
+  padding: 60px 20px;
+  color: #000000;
 }
 
 .loading-spinner {
@@ -173,43 +209,15 @@ const getConfidenceClass = (confidence: number): string => {
   margin: 0 auto 20px;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
 .error-container {
+  @apply card-container;
   text-align: center;
   padding: 40px 20px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
   color: #000000;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.error-container:hover {
-  transform: translateY(-4px);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.15),
-    0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .error-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
   background: linear-gradient(90deg, #dc3545, #e74c3c, #f093fb);
-  border-radius: 16px 16px 0 0;
 }
 
 .error-icon {
@@ -226,44 +234,16 @@ const getConfidenceClass = (confidence: number): string => {
   cursor: pointer;
   margin-top: 16px;
   font-weight: 600;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+  transition: all 0.2s ease;
 }
 
 .retry-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.6);
+  transform: translateY(-1px);
+  opacity: 0.9;
 }
 
 .result-container {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  overflow: hidden;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.result-container:hover {
-  transform: translateY(-4px);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.15),
-    0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.result-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
-  border-radius: 16px 16px 0 0;
+  @apply card-container;
 }
 
 .result-summary {
@@ -319,6 +299,83 @@ const getConfidenceClass = (confidence: number): string => {
   color: #2d3748;
   font-size: 18px;
   font-weight: 600;
+}
+
+.healthy-status-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  margin: 20px 0;
+  padding: 20px;
+}
+
+.healthy-icon-inline {
+  font-size: 48px;
+}
+
+.healthy-status-text {
+  margin: 0;
+  color: #059669;
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.disease-status-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  margin: 20px 0;
+  padding: 20px;
+}
+
+.disease-icon-inline {
+  font-size: 48px;
+}
+
+.disease-status-text {
+  margin: 0;
+  color: #d97706;
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.disease-name {
+  margin: 0;
+  color: #2d3748;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.unknown-status-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  margin: 20px 0;
+  padding: 20px;
+}
+
+.unknown-icon-inline {
+  font-size: 48px;
+}
+
+.unknown-status-text {
+  margin: 0;
+  color: #dc2626;
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
 }
 
 .model-used {
@@ -398,6 +455,56 @@ const getConfidenceClass = (confidence: number): string => {
   color: #6b7280;
 }
 
+.toggle-sources {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+}
+
+.toggle-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.toggle-icon {
+  transition: transform 0.3s ease;
+  font-size: 12px;
+}
+
+.toggle-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.additional-sources {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .healthy-status {
   text-align: center;
   padding: 40px 24px;
@@ -416,34 +523,8 @@ const getConfidenceClass = (confidence: number): string => {
 }
 
 .healthy-status p {
-  margin: 0 0 24px 0;
-  color: #4a5568;
-}
-
-.health-tips {
-  text-align: left;
-  background: rgba(240, 253, 244, 0.95);
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid rgba(102, 126, 234, 0.1);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.health-tips h4 {
-  margin: 0 0 16px 0;
-  color: #2d3748;
-  font-weight: 600;
-}
-
-.health-tips ul {
   margin: 0;
-  padding-left: 20px;
   color: #4a5568;
-}
-
-.health-tips li {
-  margin-bottom: 8px;
 }
 
 .action-buttons {
@@ -454,38 +535,28 @@ const getConfidenceClass = (confidence: number): string => {
   justify-content: center;
 }
 
-.new-analysis-btn,
-.save-result-btn {
+/* 버튼 스타일 */
+.action-buttons button {
   padding: 12px 24px;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  transition: all 0.2s ease;
+  color: white;
 }
 
 .new-analysis-btn {
   background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-}
-
-.new-analysis-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
 }
 
 .save-result-btn {
   background: linear-gradient(135deg, #28a745, #20c997);
-  color: white;
-  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
 }
 
-.save-result-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.6);
+.action-buttons button:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
 }
 
 @media (max-width: 768px) {

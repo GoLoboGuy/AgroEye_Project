@@ -111,35 +111,21 @@ const dismissPrompt = () => {
 </script>
 
 <style scoped>
-.pwa-install-prompt {
+/* PWA 공통 스타일 */
+.pwa-prompt {
   position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
   background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.05);
   padding: 20px;
-  max-width: 320px;
   z-index: 1000;
   border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
-  position: relative;
-  overflow: hidden;
   transition: all 0.3s ease;
-  animation: fadeInUp 0.6s ease-out;
+  animation: fadeInUp 0.4s ease-out;
 }
 
-.pwa-install-prompt:hover {
-  transform: translateX(-50%) translateY(-4px);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.15),
-    0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.pwa-install-prompt::before {
+.pwa-prompt::before {
   content: '';
   position: absolute;
   top: 0;
@@ -150,16 +136,22 @@ const dismissPrompt = () => {
   border-radius: 16px 16px 0 0;
 }
 
-/* 페이드인 애니메이션 */
+.pwa-install-prompt {
+  @apply pwa-prompt;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 320px;
+}
+
+.pwa-install-prompt:hover {
+  transform: translateX(-50%) translateY(-2px);
+}
+
+/* PWA 애니메이션 */
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 .pwa-install-content {
@@ -197,40 +189,29 @@ const dismissPrompt = () => {
   margin-top: 12px;
 }
 
-.pwa-install-btn {
-  background: linear-gradient(135deg, #28a745, #20c997);
-  color: white;
+/* PWA 버튼 스타일 */
+.pwa-install-buttons button {
   border: none;
   padding: 10px 16px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+  transition: all 0.2s ease;
+  color: white;
 }
 
-.pwa-install-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.6);
+.pwa-install-btn {
+  background: linear-gradient(135deg, #28a745, #20c997);
 }
 
 .pwa-dismiss-btn {
   background: linear-gradient(135deg, #6c757d, #5a6268);
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4);
 }
 
-.pwa-dismiss-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(108, 117, 125, 0.6);
+.pwa-install-buttons button:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
 }
 
 @media (max-width: 480px) {
@@ -243,18 +224,12 @@ const dismissPrompt = () => {
   }
 
   .pwa-install-prompt:hover {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
   }
 
   @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(30px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .pwa-install-content {

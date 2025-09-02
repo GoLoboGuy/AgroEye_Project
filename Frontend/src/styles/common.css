@@ -20,13 +20,7 @@
 
 /* 전역 배경 스타일 */
 body {
-  background: linear-gradient(135deg,
-    var(--color-pastel-green-light) 0%,
-    var(--color-pastel-yellow-light) 25%,
-    var(--color-pastel-green) 50%,
-    var(--color-pastel-yellow) 75%,
-    var(--color-pastel-green-light) 100%
-  );
+  background: linear-gradient(135deg, #F0EAD6 0%, #F0EAD6 100%);
   background-attachment: fixed;
   min-height: 100vh;
 }
