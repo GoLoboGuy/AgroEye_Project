@@ -4,6 +4,7 @@ import os
 import json
 from pathlib import Path
 from typing import List, Any, Dict, Optional
+from datetime import datetime
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Path as FPath
 
@@ -21,31 +22,49 @@ from .services.classifier import classifier
 from .services.synonyms import class_to_query_terms, as_boolean_query
 from .services.rag_service import rag, Retrieved
 
-from .schemas import PredictResponse, SourceItem  # ← SourceItem 추가
+from .schemas import PredictResponse, SourceItem
 
-# router = APIRouter(tags=["predict"])  # ← FastAPI 대신 APIRouter
-router = APIRouter() # 기본 tags 제거
+router = APIRouter()
 
-# RAG 결과 → SourceItem dict 변환 헬퍼 추가
+def generate_unique_filename(original_filename: str, upload_dir: Path) -> str:
+    """
+    파일명을 "파일이름_YYMMDD_000.jpg" 형태로 생성하고 숫자를 000~999까지 순차적으로 증가시킴
+    """
+    # 파일 확장자 분리
+    name, ext = os.path.splitext(original_filename)
+    if not ext:
+        ext = ".jpg"  # 기본 확장자
+    
+    # 현재 날짜 (YYMMDD 형식)
+    current_date = datetime.now().strftime("%y%m%d")
+    
+    # 기본 파일명 생성
+    base_filename = f"{name}_{current_date}"
+    
+    # 000부터 999까지 순차적으로 확인하여 사용 가능한 번호 찾기
+    for i in range(1000):
+        number_str = f"{i:03d}"  # 000, 001, 002, ..., 999
+        filename = f"{base_filename}_{number_str}{ext}"
+        file_path = upload_dir / filename
+        
+        # 파일이 존재하지 않으면 해당 파일명 사용
+        if not file_path.exists():
+            return filename
+    
+    # 999까지 모두 사용된 경우 (극히 드문 경우)
+    raise HTTPException(status_code=500, detail="파일 저장 공간이 가득 찼습니다. (999개 파일 초과)")
+
 def _to_source_item(hit) -> dict:
-    """
-    hit: Retrieved 객체 (rag.search()에서 반환)
-    반환: SourceItem에 맞는 dict
-    """
-    # Retrieved 객체의 구조: text, meta, score
     meta = getattr(hit, "meta", {}) or {}
     score = getattr(hit, "score", None)
-    
-    src = str(meta.get("source", "")).replace("\\", "/")  # 경로 통일
+    src = str(meta.get("source", "")).replace("\\", "/")
     page = meta.get("page", None)
     try:
         page = int(page) if page is not None else None
     except Exception:
         page = None
-
     snippet = (getattr(hit, "text", "") or "")[:300]
     title = meta.get("title", None)
-
     return {
         "source": src,
         "page": page,
@@ -54,25 +73,22 @@ def _to_source_item(hit) -> dict:
         "title": title,
     }
 
-# -----------------------------
-# 1) 예측
-# -----------------------------
 @router.post("/predict", response_model=PredictResponse, tags=["predict"])
 async def predict(file: UploadFile = File(...)):
     # 1) 이미지 저장
-    save_name = f"img_{os.getpid()}_{file.filename}"
+    save_name = generate_unique_filename(file.filename, Path(settings.UPLOAD_DIR))
     save_path = Path(settings.UPLOAD_DIR) / save_name
     data = await file.read()
     save_path.write_bytes(data)
 
-    # 2) 분류 모델 추론 (상세 결과 포함)
+    # 2) 분류
     try:
         class_name, confidence = classifier.classify(str(save_path))
         detailed_result = classifier.classify_with_details(str(save_path))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"classifier error: {e}")
 
-    # 3) Unknown 클래스인 경우 특별 처리
+    # 3) Unknown 처리 (RAG 생략)
     if class_name == "Unknown":
         warning_message = (
             "⚠️ 신뢰도 부족으로 인한 분류 실패\n\n"
@@ -82,38 +98,35 @@ async def predict(file: UploadFile = File(...)):
             "- 잎사귀가 이미지 중앙에 잘 보이도록 촬영해주세요\n"
             "- 다른 각도에서 촬영해보세요"
         )
-        
         return PredictResponse(
-            id=0,  # DB에 저장하지 않으므로 0
+            id=0,
             class_name="Unknown",
             confidence=0.0,
             recomm=warning_message,
             image_path=str(save_path),
-            sources=[],  # 소스 정보 없음
+            sources=[],
             detailed_prediction=detailed_result,
         )
 
-    # 4) 클래스 → 동의어/한글 질의 변환
+    # 4) 클래스 질의어 생성
     terms = class_to_query_terms(class_name)
     boolean_query = as_boolean_query(terms)
 
-    # 5) RAG 검색 + 설명 생성
+    # 5) RAG (인덱스 필수)
     if not rag:
         raise HTTPException(status_code=500, detail="RAG 서비스가 초기화되지 않았습니다. 인덱스를 먼저 생성하세요.")
     retrieved: List[Retrieved] = rag.search(boolean_query, k=4)
     explanation = rag.generate_explanation(boolean_query, retrieved)
 
-    # dict 리스트 (SourceItem 스키마에 맞춤)
     sources_dicts = [_to_source_item(h) for h in retrieved[:4]]
-    # Pydantic 모델로 감싸도 되고(dict 그대로도 OK)
     sources_items = [SourceItem(**d) for d in sources_dicts]
 
-    # 6) DB 저장 (JSON 직렬화에는 dict가 적합)
+    # 6) DB 저장
     class_info_obj = {
         "query_terms": terms,
         "boolean_query": boolean_query,
-        "sources": sources_dicts,                   # ← dict 사용 (모델 말고)
-        "detailed_prediction": detailed_result,
+        "sources": sources_dicts,
+        "detailed_prediction": detailed_result,   # ← 디버깅에 유용
     }
     class_info = json.dumps(class_info_obj, ensure_ascii=False)
 
@@ -145,22 +158,14 @@ async def predict(file: UploadFile = File(...)):
         detailed_prediction=detailed_result,
     )
 
-# -----------------------------
-# 2) 모델 상태
-# -----------------------------
 @router.get("/model/status", tags=["predict"])
 async def get_model_status():
-    """분류 모델의 상태 확인"""
     return {
         "model_loaded": getattr(classifier, "loaded", False),
         "model_available": getattr(classifier, "model_available", False),
         "status": "ready" if getattr(classifier, "loaded", False) else "not_loaded",
     }
 
-# -----------------------------
-# 3) 조회 (리스트)
-#    GET /results?page=1&size=20&class_name=...&order=desc
-# -----------------------------
 @router.get("/results", response_model=ResultsPage, tags=["results"])
 def list_results(
     page: int = Query(1, ge=1),
@@ -168,10 +173,6 @@ def list_results(
     class_name: Optional[str] = Query(None),
     order: str = Query("desc", pattern="^(asc|desc)$"),
 ):
-    """
-    결과 리스트 조회 (페이지네이션 + 선택적 class_name 필터)
-    created_at 내림차순(desc) 기본
-    """
     offset = (page - 1) * size
     db = SessionLocal()
     try:
@@ -181,7 +182,6 @@ def list_results(
 
         total = q.count()
 
-        # 정렬
         if order.lower() == "asc":
             q = q.order_by(FinalProjectResult.created_at.asc())
         else:
@@ -204,21 +204,13 @@ def list_results(
     finally:
         db.close()
 
-# -----------------------------
-# 4) 상세조회
-#    GET /results/{id}
-# -----------------------------
 @router.get("/results/{id}", response_model=ResultDetail, tags=["results"])
-def get_result(
-    id: int = FPath(..., ge=1),
-):
+def get_result(id: int = FPath(..., ge=1)):
     db = SessionLocal()
     try:
         r = db.query(FinalProjectResult).get(id)
         if not r:
             raise HTTPException(status_code=404, detail="Not Found")
-
-        # class_info JSON 파싱
         try:
             info = json.loads(r.class_info) if r.class_info else None
         except json.JSONDecodeError:
@@ -236,19 +228,12 @@ def get_result(
     finally:
         db.close()
 
-# -----------------------------
-# 5) 삭제
-#    DELETE /results/{id}
-# -----------------------------
 @router.delete("/results/{id}", response_model=DeleteResult, tags=["results"])
-def delete_result(
-    id: int = FPath(..., ge=1),
-):
+def delete_result(id: int = FPath(..., ge=1)):
     db = SessionLocal()
     try:
         r = db.query(FinalProjectResult).get(id)
         if not r:
-            # 이미 없는 경우도 일단 false로 응답
             return DeleteResult(id=id, deleted=False)
         db.delete(r)
         db.commit()
