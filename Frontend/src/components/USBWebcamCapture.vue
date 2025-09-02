@@ -1,7 +1,45 @@
 <template>
   <div class="usb-webcam-container">
-    <h2>🌱 농작물 질병 진단 시스템</h2>
+    <h2>농작물 질병 진단 시스템</h2>
     <p class="subtitle">카메라로 작물을 촬영하여 AI가 질병을 진단해드립니다</p>
+
+    <!-- 사용 가이드 (접을 수 있는) -->
+    <div class="usage-guide collapsible">
+      <div class="section-header clickable" @click="toggleUsageGuide" @touchstart="toggleUsageGuide">
+        <div class="icon-wrapper">ℹ️</div>
+        <h3 class="usage-title">사용 방법</h3>
+        <div class="toggle-icon" :class="{ 'rotated': isUsageGuideExpanded }">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
+        </div>
+      </div>
+      <div class="collapsible-content" :class="{ 'expanded': isUsageGuideExpanded }">
+        <div class="guide-steps">
+          <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <h4>카메라 연결</h4>
+              <p>카메라를 연결하고 장치를 선택하세요</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <h4>작물 촬영</h4>
+              <p>진단하고 싶은 작물의 잎이나 과실을 명확하게 촬영하세요</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <h4>AI 진단</h4>
+              <p>AI가 자동으로 질병을 분석하고 결과를 제공합니다</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 카메라 선택 섹션 -->
     <div class="device-selection">
@@ -62,7 +100,7 @@
       <div class="webcam-section">
         <div class="section-header">
           <div class="icon-wrapper">📹</div>
-          <h3>카메라 화면</h3>
+          <h3 class="camera-title">카메라 화면</h3>
         </div>
         <div class="webcam-wrapper">
           <video
@@ -111,7 +149,7 @@
       <div class="captured-section">
         <div class="section-header">
           <div class="icon-wrapper">📸</div>
-          <h3>촬영된 이미지</h3>
+          <h3 class="captured-title">촬영된 이미지</h3>
         </div>
         <div class="captured-image-container">
           <div v-if="capturedImage" class="captured-image">
@@ -132,42 +170,39 @@
 
           <div v-else class="no-image">
             <p>촬영된 이미지가 없습니다.</p>
-            <p>카메라를 시작하고 "촬영 및 진단" 버튼을 클릭하세요.</p>
+            <p>카메라를 시작하고 "촬영 및 진단" 버튼을 클릭하거나, 아래에서 이미지를 업로드하세요.</p>
+
+            <!-- 이미지 업로드 섹션 -->
+            <div class="upload-section">
+              <div
+                class="upload-area"
+                :class="{ 'dragover': isDragOver }"
+                @click="triggerFileUpload"
+                @drop="handleFileDrop"
+                @dragover.prevent
+                @dragenter.prevent="handleDragEnter"
+                @dragleave.prevent="handleDragLeave"
+              >
+                <input
+                  ref="fileInputRef"
+                  type="file"
+                  accept="image/*"
+                  @change="handleFileUpload"
+                  style="display: none;"
+                />
+                <div class="upload-content">
+                  <div class="upload-icon">📁</div>
+                  <p class="upload-text">이미지를 클릭하거나 드래그하여 업로드</p>
+                  <p class="upload-hint">JPG, PNG, GIF 파일 지원</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 사용 가이드 -->
-    <div class="usage-guide">
-      <div class="section-header">
-        <div class="icon-wrapper">ℹ️</div>
-        <h3>사용 방법</h3>
-      </div>
-      <div class="guide-steps">
-        <div class="step">
-          <div class="step-number">1</div>
-          <div class="step-content">
-            <h4>카메라 연결</h4>
-            <p>카메라를 연결하고 장치를 선택하세요</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-number">2</div>
-          <div class="step-content">
-            <h4>작물 촬영</h4>
-            <p>진단하고 싶은 작물의 잎이나 과실을 명확하게 촬영하세요</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-number">3</div>
-          <div class="step-content">
-            <h4>AI 진단</h4>
-            <p>AI가 자동으로 질병을 분석하고 결과를 제공합니다</p>
-          </div>
-        </div>
-      </div>
-    </div>
+
   </div>
 </template>
 
@@ -175,6 +210,9 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import AnalysisResult from './AnalysisResult.vue'
 import { apiService, type PredictResponse } from '../services/api'
+
+// 헬스 체크 및 모니터링 관련 변수
+let healthCheckInterval: ReturnType<typeof setInterval> | null = null
 
 interface MediaDeviceInfo {
   deviceId: string
@@ -184,6 +222,7 @@ interface MediaDeviceInfo {
 
 const videoRef = ref<HTMLVideoElement>()
 const canvasRef = ref<HTMLCanvasElement>()
+const fileInputRef = ref<HTMLInputElement>()
 const isStreamActive = ref(false)
 const capturedImage = ref<string>('')
 const mediaStream = ref<MediaStream | null>(null)
@@ -196,6 +235,12 @@ const selectedDeviceLabel = ref<string>('')
 const analysisResult = ref<PredictResponse | null>(null)
 const isAnalyzing = ref(false)
 const analysisError = ref<string | null>(null)
+
+// 사용 가이드 접기/펼치기 상태
+const isUsageGuideExpanded = ref(false)
+
+// 드래그 오버 상태
+const isDragOver = ref(false)
 
 // 사용 가능한 모든 비디오 장치를 가져오기
 const getAvailableDevices = async () => {
@@ -342,6 +387,16 @@ const analyzeImage = async () => {
     const result = await apiService.predictImage(file)
     analysisResult.value = result
     console.log('AI 분석 완료:', result)
+
+    // 백그라운드에서 저장된 결과 검증
+    if (result.id && result.id > 0) {
+      try {
+        const savedResult = await apiService.getResultById(result.id)
+        console.log('📋 저장된 결과 검증:', savedResult)
+      } catch (error) {
+        console.error('❌ 결과 검증 실패:', error)
+      }
+    }
   } catch (error) {
     console.error('AI 분석 오류:', error)
     analysisError.value = '이미지 분석 중 오류가 발생했습니다. 다시 시도해주세요.'
@@ -381,14 +436,128 @@ const saveAnalysisResult = async () => {
   }
 }
 
+// 사용 가이드 접기/펼치기 토글
+const toggleUsageGuide = (event?: Event) => {
+  // 터치와 클릭 이벤트 중복 방지
+  if (event) {
+    event.preventDefault()
+    event.stopPropagation()
+  }
+
+  isUsageGuideExpanded.value = !isUsageGuideExpanded.value
+}
+
+// 파일 업로드 트리거
+const triggerFileUpload = () => {
+  if (fileInputRef.value) {
+    fileInputRef.value.click()
+  }
+}
+
+// 드래그 엔터 처리
+const handleDragEnter = (event: DragEvent) => {
+  event.preventDefault()
+  isDragOver.value = true
+}
+
+// 드래그 리브 처리
+const handleDragLeave = (event: DragEvent) => {
+  event.preventDefault()
+  isDragOver.value = false
+}
+
+// 파일 드롭 처리
+const handleFileDrop = (event: DragEvent) => {
+  event.preventDefault()
+  isDragOver.value = false
+  const files = event.dataTransfer?.files
+  if (files && files.length > 0) {
+    const file = files[0]
+    if (file.type.startsWith('image/')) {
+      processUploadedFile(file)
+    } else {
+      alert('이미지 파일만 업로드 가능합니다.')
+    }
+  }
+}
+
+// 파일 업로드 처리
+const handleFileUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  if (files && files.length > 0) {
+    const file = files[0]
+    processUploadedFile(file)
+  }
+}
+
+// 업로드된 파일 처리
+const processUploadedFile = (file: File) => {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const result = e.target?.result as string
+    if (result) {
+      capturedImage.value = result
+      resetAnalysis() // 기존 분석 결과 초기화
+      console.log('이미지 업로드 완료:', file.name)
+
+      // 업로드된 이미지로 바로 분석 시작
+      setTimeout(() => {
+        analyzeImage()
+      }, 500)
+    }
+  }
+  reader.readAsDataURL(file)
+}
+
 onMounted(async () => {
   // 컴포넌트 마운트 시 사용 가능한 장치 목록 가져오기
   await getAvailableDevices()
+
+  // 백그라운드에서 모델 상태 확인
+  try {
+    const modelStatus = await apiService.getModelStatus()
+    console.log('🤖 AI 모델 상태:', modelStatus)
+  } catch (error) {
+    console.error('❌ 모델 상태 확인 실패:', error)
+  }
+
+  // 백그라운드에서 헬스 체크
+  try {
+    const health = await apiService.healthCheck()
+    console.log('💚 서버 상태:', health)
+  } catch (error) {
+    console.error('❌ 서버 헬스 체크 실패:', error)
+  }
+
+  // 백그라운드에서 최근 분석 결과 목록 조회 (최근 5개)
+  try {
+    const recentResults = await apiService.getResults(1, 5)
+    console.log('📊 최근 분석 결과:', recentResults.items)
+  } catch (error) {
+    console.error('❌ 최근 결과 조회 실패:', error)
+  }
+
+  // 주기적 헬스 체크 시작 (60초마다)
+  healthCheckInterval = setInterval(async () => {
+    try {
+      const health = await apiService.healthCheck()
+      console.log('🔄 주기적 헬스 체크:', health.status)
+    } catch (error) {
+      console.error('❌ 주기적 헬스 체크 실패:', error)
+    }
+  }, 60000) // 60초
 })
 
 onUnmounted(() => {
   // 컴포넌트 언마운트 시 카메라 정리
   stopUSBWebcam()
+
+  // 주기적 헬스 체크 정리
+  if (healthCheckInterval) {
+    clearInterval(healthCheckInterval)
+    healthCheckInterval = null
+  }
 })
 </script>
 
@@ -400,8 +569,7 @@ onUnmounted(() => {
   padding: 20px;
   text-align: center;
   color: #000000;
-  /* AgroEye 헤더와 같은 파란색-보라색 그라데이션으로 변경 */
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+  background-color: rgba(255, 255, 240, 1);
   min-height: 100vh;
   position: relative;
 }
@@ -432,7 +600,7 @@ onUnmounted(() => {
 .webcam-section,
 .captured-section,
 .usage-guide {
-  background: rgb(230, 252, 212);
+  background: rgb(255, 253, 240);
   border-radius: 16px;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.1),
@@ -442,6 +610,53 @@ onUnmounted(() => {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+}
+
+/* 접을 수 있는 사용 가이드 스타일 */
+.usage-guide.collapsible {
+  margin-bottom: 30px;
+  overflow: visible;
+}
+
+.clickable {
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: rgba(102, 126, 234, 0.1);
+  touch-action: manipulation;
+}
+
+.clickable:hover {
+  background-color: rgba(102, 126, 234, 0.05);
+  border-radius: 12px;
+  padding: 10px;
+  margin: -10px;
+}
+
+.clickable:active {
+  background-color: rgba(102, 126, 234, 0.1);
+  transform: scale(0.98);
+}
+
+.toggle-icon {
+  margin-left: auto;
+  transition: transform 0.3s ease;
+  color: rgb(0, 0, 0);
+}
+
+.toggle-icon.rotated {
+  transform: rotate(180deg);
+}
+
+.collapsible-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease-in-out, padding 0.3s ease;
+  padding: 0 30px;
+}
+
+.collapsible-content.expanded {
+  max-height: 1000px;
+  padding: 20px 30px 30px 30px;
 }
 
 /* 카드 호버 효과 */
@@ -466,7 +681,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+  background-color: rgba(240, 230, 210, 1);
   border-radius: 16px 16px 0 0;
 }
 
@@ -483,7 +698,7 @@ onUnmounted(() => {
 .icon-wrapper {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background-color: rgba(240, 230, 210, 1);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -498,6 +713,21 @@ onUnmounted(() => {
   color: #2d3748;
   font-size: 20px;
   font-weight: 600;
+}
+
+.usage-title {
+  padding-top: 16px;
+  line-height: 1.1;
+}
+
+.camera-title {
+  padding-top: 16px;
+  line-height: 1.1;
+}
+
+.captured-title {
+  padding-top: 16px;
+  line-height: 1.1;
 }
 
 /* 버튼 공통 스타일 */
@@ -530,7 +760,7 @@ button:hover:not(:disabled) {
   color: white;
   box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
 }
-
+  
 .stop-btn {
   background: linear-gradient(135deg, #dc3545, #e74c3c);
   color: white;
@@ -771,6 +1001,68 @@ button:hover:not(:disabled) {
   color: #000000;
 }
 
+/* 이미지 업로드 섹션 스타일 */
+.upload-section {
+  margin-top: 30px;
+  width: 100%;
+}
+
+.upload-area {
+  border: 2px dashed rgba(102, 126, 234, 0.3);
+  border-radius: 12px;
+  padding: 40px 20px;
+  background: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-area:hover {
+  border-color: rgba(102, 126, 234, 0.6);
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.upload-area:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+}
+
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-icon {
+  font-size: 48px;
+  color: rgba(102, 126, 234, 0.6);
+  margin-bottom: 8px;
+}
+
+.upload-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+.upload-hint {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* 드래그 오버 상태 */
+.upload-area.dragover {
+  border-color: rgba(102, 126, 234, 0.8);
+  background: rgba(102, 126, 234, 0.05);
+  transform: scale(1.02);
+}
+
 .analysis-section {
   margin-top: 30px;
 }
@@ -788,15 +1080,21 @@ button:hover:not(:disabled) {
 h2 {
   margin-bottom: 10px;
   font-size: 28px;
-  color: #ffffff;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  color: #2B2B2B;
+  font-weight: 600;
+  font-family: 'SeoulNamsan', 'Noto Sans KR', sans-serif;
+  letter-spacing: 0.5px;
+  line-height: 1.3;
 }
 
 .subtitle {
   margin-bottom: 30px;
   font-size: 16px;
-  color: #ffffff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  color: #4A5568;
+  font-weight: 500;
+  font-family: 'SeoulNamsan', 'Noto Sans KR', sans-serif;
+  letter-spacing: 0.3px;
+  line-height: 1.5;
 }
 
 h3 {
@@ -877,7 +1175,48 @@ h3 {
     padding: 16px;
   }
 
+  /* 모바일에서 접기/펼치기 기능 개선 */
+  .usage-guide.collapsible {
+    margin-bottom: 20px;
+  }
+
+  .clickable {
+    padding: 12px;
+    margin: -12px;
+    border-radius: 8px;
+  }
+
+  .clickable:hover {
+    padding: 12px;
+    margin: -12px;
+  }
+
+  .toggle-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .toggle-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .collapsible-content {
+    padding: 0 16px;
+  }
+
+  .collapsible-content.expanded {
+    padding: 16px;
+  }
+
+  .guide-steps {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
   .step {
+    padding: 16px;
     gap: 10px;
   }
 
@@ -889,6 +1228,27 @@ h3 {
 
   .step-content h4 {
     font-size: 14px;
+  }
+
+  .step-content p {
+    font-size: 12px;
+  }
+
+  /* 섹션 헤더 모바일 최적화 */
+  .section-header {
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+  }
+
+  .icon-wrapper {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .section-header h3 {
+    font-size: 16px;
   }
 }
 </style>
